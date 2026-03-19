@@ -1904,7 +1904,7 @@ func ToBedrockResponsesRequest(ctx *schemas.BifrostContext, bifrostReq *schemas.
 						Name:        name,
 						Description: &description,
 						InputSchema: BedrockToolInputSchema{
-							JSON: schemaObject,
+							JSON: func() json.RawMessage { b, _ := json.Marshal(schemaObject); return json.RawMessage(b) }(),
 						},
 					},
 				}
@@ -2453,10 +2453,10 @@ func ConvertBifrostMessagesToBedrockMessages(bifrostMessages []schemas.Responses
 						},
 					}
 					// Preserve original key ordering of tool arguments for prompt caching.
-					var input interface{}
+					var input json.RawMessage
 					var buf bytes.Buffer
 					if err := json.Compact(&buf, []byte(toolCall.Arguments)); err == nil {
-						input = json.RawMessage(buf.Bytes())
+						input = buf.Bytes()
 					} else {
 						input = json.RawMessage("{}")
 					}
@@ -2583,10 +2583,10 @@ func ConvertBifrostMessagesToBedrockMessages(bifrostMessages []schemas.Responses
 								},
 							}
 							// Preserve original key ordering of tool arguments for prompt caching.
-							var input interface{}
+							var input json.RawMessage
 							var buf bytes.Buffer
 							if err := json.Compact(&buf, []byte(toolCall.Arguments)); err == nil {
-								input = json.RawMessage(buf.Bytes())
+								input = buf.Bytes()
 							} else {
 								input = json.RawMessage("{}")
 							}
@@ -2664,10 +2664,10 @@ func ConvertBifrostMessagesToBedrockMessages(bifrostMessages []schemas.Responses
 							},
 						}
 						// Preserve original key ordering of tool arguments for prompt caching.
-						var input interface{}
+						var input json.RawMessage
 						var buf bytes.Buffer
 						if err := json.Compact(&buf, []byte(toolCall.Arguments)); err == nil {
-							input = json.RawMessage(buf.Bytes())
+							input = buf.Bytes()
 						} else {
 							input = json.RawMessage("{}")
 						}
@@ -2980,7 +2980,7 @@ func convertSingleBedrockMessageToBifrostMessages(ctx *schemas.BifrostContext, m
 				// Marshal the tool input to JSON string
 				var contentStr string
 				if block.ToolUse.Input != nil {
-					contentStr = schemas.JsonifyInput(block.ToolUse.Input)
+					contentStr = string(block.ToolUse.Input)
 				} else {
 					contentStr = "{}"
 				}
@@ -2998,7 +2998,7 @@ func convertSingleBedrockMessageToBifrostMessages(ctx *schemas.BifrostContext, m
 					ResponsesToolMessage: &schemas.ResponsesToolMessage{
 						CallID:    &toolUseID,
 						Name:      &toolUseName,
-						Arguments: schemas.Ptr(schemas.JsonifyInput(block.ToolUse.Input)),
+						Arguments: schemas.Ptr(string(block.ToolUse.Input)),
 					},
 				}
 				if isOutputMessage {
@@ -3073,7 +3073,7 @@ func convertSingleBedrockMessageToBifrostMessages(ctx *schemas.BifrostContext, m
 				// JSON first (no unmarshal; just one marshal to string when present)
 				for _, c := range block.ToolResult.Content {
 					if c.JSON != nil {
-						resultContent = schemas.JsonifyInput(c.JSON)
+						resultContent = string(c.JSON)
 						break
 					}
 				}

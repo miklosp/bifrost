@@ -71,7 +71,7 @@ func (req *AnthropicTextRequest) IsStreamingRequested() bool {
 // AnthropicOutputConfig represents the GA structured outputs config (output_config.format)
 // and the effort parameter (output_config.effort) for controlling token spending.
 type AnthropicOutputConfig struct {
-	Format interface{} `json:"format,omitempty"`
+	Format json.RawMessage `json:"format,omitempty"`
 	Effort *string     `json:"effort,omitempty"` // "low", "medium", "high", "max" (Opus 4.5+)
 }
 
@@ -92,7 +92,7 @@ type AnthropicMessageRequest struct {
 	ToolChoice        *AnthropicToolChoice   `json:"tool_choice,omitempty"`
 	MCPServers        []AnthropicMCPServer   `json:"mcp_servers,omitempty"` // This feature requires the beta header: "anthropic-beta": "mcp-client-2025-04-04"
 	Thinking          *AnthropicThinking     `json:"thinking,omitempty"`
-	OutputFormat      interface{}            `json:"output_format,omitempty"` // Beta: requires header "anthropic-beta": "structured-outputs-2025-11-13"
+	OutputFormat      json.RawMessage        `json:"output_format,omitempty"` // Beta: requires header "anthropic-beta": "structured-outputs-2025-11-13" (json.RawMessage preserves key ordering)
 	OutputConfig      *AnthropicOutputConfig `json:"output_config,omitempty"` // GA: structured outputs without beta header
 	ServiceTier       *string                `json:"service_tier,omitempty"`  // "auto" or "standard_only"
 	InferenceGeo      *string                `json:"inference_geo,omitempty"` // the geographic region for inference processing. If not specified, the workspace's default_inference_geo is used.
@@ -608,7 +608,7 @@ type AnthropicContentBlock struct {
 	ToolUseID        *string                   `json:"tool_use_id,omitempty"`       // For tool_result content
 	ID               *string                   `json:"id,omitempty"`                // For tool_use content
 	Name             *string                   `json:"name,omitempty"`              // For tool_use content
-	Input            any                       `json:"input,omitempty"`             // For tool_use content
+	Input            json.RawMessage           `json:"input,omitempty"`             // For tool_use content (json.RawMessage preserves key ordering for prompt caching)
 	ServerName       *string                   `json:"server_name,omitempty"`       // For mcp_tool_use content
 	Content          *AnthropicContent         `json:"content,omitempty"`           // For tool_result content
 	IsError          *bool                     `json:"is_error,omitempty"`          // For tool_result content, indicates error state

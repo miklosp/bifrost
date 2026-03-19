@@ -1,6 +1,7 @@
 package bedrock
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -89,7 +90,7 @@ type BedrockBatchJobSummary struct {
 // BedrockBatchResultRecord represents a single result record in Bedrock batch output JSONL.
 type BedrockBatchResultRecord struct {
 	RecordID    string                 `json:"recordId"`
-	ModelOutput map[string]interface{} `json:"modelOutput,omitempty"`
+	ModelOutput json.RawMessage        `json:"modelOutput,omitempty"`
 	Error       *BedrockBatchError     `json:"error,omitempty"`
 }
 

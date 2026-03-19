@@ -348,9 +348,10 @@ func ToGeminiResponsesResponse(bifrostResp *schemas.BifrostResponsesResponse) *G
 					funcName = *msg.ResponsesToolMessage.CallID
 				}
 
+				responseBytes, _ := sonic.Marshal(responseMap)
 				functionResponse := &FunctionResponse{
 					Name:     funcName,
-					Response: responseMap,
+					Response: json.RawMessage(responseBytes),
 				}
 				if msg.ResponsesToolMessage.CallID != nil {
 					functionResponse.ID = *msg.ResponsesToolMessage.CallID
@@ -1917,13 +1918,18 @@ func convertGeminiContentsToResponsesMessages(contents []Content) []schemas.Resp
 					}
 				}
 
-				// Convert response map to string
+				// Convert response to string
 				responseStr := ""
 				if part.FunctionResponse.Response != nil {
-					if output, ok := part.FunctionResponse.Response["output"].(string); ok {
-						responseStr = output
-					} else if responseBytes, err := sonic.Marshal(part.FunctionResponse.Response); err == nil {
-						responseStr = string(responseBytes)
+					var respMap map[string]any
+					if err := sonic.Unmarshal([]byte(part.FunctionResponse.Response), &respMap); err == nil {
+						if output, ok := respMap["output"].(string); ok {
+							responseStr = output
+						} else {
+							responseStr = string(part.FunctionResponse.Response)
+						}
+					} else {
+						responseStr = string(part.FunctionResponse.Response)
 					}
 				}
 
@@ -3019,10 +3025,11 @@ func convertResponsesMessagesToGeminiContents(messages []schemas.ResponsesMessag
 						funcName = *msg.ResponsesToolMessage.CallID
 					}
 
+					responseBytes, _ := sonic.Marshal(responseMap)
 					part := &Part{
 						FunctionResponse: &FunctionResponse{
 							Name:     funcName,
-							Response: responseMap,
+							Response: json.RawMessage(responseBytes),
 							ID:       *msg.ResponsesToolMessage.CallID,
 						},
 					}

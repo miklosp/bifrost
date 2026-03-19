@@ -241,7 +241,7 @@ type BedrockDocumentSourceData struct {
 type BedrockToolUse struct {
 	ToolUseID string      `json:"toolUseId"` // Required: Unique identifier for this tool use
 	Name      string      `json:"name"`      // Required: Name of the tool to use
-	Input     interface{} `json:"input"`     // Required: Input parameters for the tool (JSON object)
+	Input     json.RawMessage `json:"input"`     // Required: Input parameters for the tool (json.RawMessage preserves key ordering for prompt caching)
 }
 
 // BedrockToolResult represents the result of a tool use
@@ -374,7 +374,7 @@ type BedrockConverseResponse struct {
 	StopReason                    string                    `json:"stopReason"`                              // Required: Reason for stopping
 	Usage                         *BedrockTokenUsage        `json:"usage"`                                   // Required: Token usage information
 	Metrics                       *BedrockConverseMetrics   `json:"metrics"`                                 // Required: Response metrics
-	AdditionalModelResponseFields map[string]interface{}    `json:"additionalModelResponseFields,omitempty"` // Optional: Additional model-specific response fields
+	AdditionalModelResponseFields json.RawMessage           `json:"additionalModelResponseFields,omitempty"` // Optional: Additional model-specific response fields (json.RawMessage preserves key ordering)
 	PerformanceConfig             *BedrockPerformanceConfig `json:"performanceConfig,omitempty"`             // Optional: Performance configuration used
 	ServiceTier                   *BedrockServiceTier       `json:"serviceTier,omitempty"`                   // Optional: Service tier that was used
 	Trace                         *BedrockConverseTrace     `json:"trace,omitempty"`                         // Optional: Guardrail trace information

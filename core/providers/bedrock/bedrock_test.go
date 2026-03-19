@@ -1513,7 +1513,7 @@ func TestBifrostToBedrockResponseConversion(t *testing.T) {
 								ToolUse: &bedrock.BedrockToolUse{
 									ToolUseID: callID,
 									Name:      toolName,
-									Input:     "invalid json {", // Should fallback to raw string
+									Input:     json.RawMessage("invalid json {"), // Should fallback to raw string
 								},
 							},
 						},
@@ -1912,9 +1912,7 @@ func TestBedrockToBifrostResponseConversion(t *testing.T) {
 	totalTokens := 30
 	toolUseID := "call-123"
 	toolName := "get_weather"
-	toolInput := map[string]interface{}{
-		"location": "NYC",
-	}
+	toolInput := json.RawMessage(`{"location":"NYC"}`)
 	ctx := schemas.NewBifrostContext(context.Background(), schemas.NoDeadline)
 
 	tests := []struct {
@@ -2035,7 +2033,7 @@ func TestBedrockToBifrostResponseConversion(t *testing.T) {
 						ResponsesToolMessage: &schemas.ResponsesToolMessage{
 							CallID:    &toolUseID,
 							Name:      &toolName,
-							Arguments: schemas.Ptr(schemas.JsonifyInput(toolInput)),
+							Arguments: schemas.Ptr(string(toolInput)),
 						},
 					},
 				},

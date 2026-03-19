@@ -667,21 +667,24 @@ func ToAnthropicChatResponse(bifrostResp *schemas.BifrostChatResponse) *Anthropi
 		// Add tool calls as tool_use content
 		if choice.ChatNonStreamResponseChoice != nil && choice.Message != nil && choice.Message.ChatAssistantMessage != nil && choice.Message.ChatAssistantMessage.ToolCalls != nil {
 			for _, toolCall := range choice.Message.ChatAssistantMessage.ToolCalls {
-				// Parse arguments JSON string back to map
-				var input map[string]interface{}
+				// Parse arguments JSON string to raw message
+				var inputRaw json.RawMessage
 				if toolCall.Function.Arguments != "" {
-					if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &input); err != nil {
-						input = map[string]interface{}{}
+					// Validate it's valid JSON, otherwise use empty object
+					if json.Valid([]byte(toolCall.Function.Arguments)) {
+						inputRaw = json.RawMessage(toolCall.Function.Arguments)
+					} else {
+						inputRaw = json.RawMessage("{}")
 					}
 				} else {
-					input = map[string]interface{}{}
+					inputRaw = json.RawMessage("{}")
 				}
 
 				content = append(content, AnthropicContentBlock{
 					Type:  AnthropicContentBlockTypeToolUse,
 					ID:    toolCall.ID,
 					Name:  toolCall.Function.Name,
-					Input: input,
+					Input: inputRaw,
 				})
 			}
 		}

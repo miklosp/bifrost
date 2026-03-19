@@ -862,12 +862,13 @@ func convertResponseFormatToTool(ctx *schemas.BifrostContext, params *schemas.Ch
 	ctx.SetValue(schemas.BifrostContextKeyStructuredOutputToolName, toolName)
 
 	// Create the Bedrock tool
+	schemaObjBytes, _ := json.Marshal(schemaObj)
 	return &BedrockTool{
 		ToolSpec: &BedrockToolSpec{
 			Name:        toolName,
 			Description: schemas.Ptr(description),
 			InputSchema: BedrockToolInputSchema{
-				JSON: schemaObj,
+				JSON: json.RawMessage(schemaObjBytes),
 			},
 		},
 	}
@@ -904,12 +905,13 @@ func convertTextFormatToTool(ctx *schemas.BifrostContext, textConfig *schemas.Re
 		return nil // Schema is required for Bedrock tooling
 	}
 
+	schemaObjBytes2, _ := json.Marshal(schemaObj)
 	return &BedrockTool{
 		ToolSpec: &BedrockToolSpec{
 			Name:        toolName,
 			Description: schemas.Ptr(description),
 			InputSchema: BedrockToolInputSchema{
-				JSON: schemaObj,
+				JSON: json.RawMessage(schemaObjBytes2),
 			},
 		},
 	}
@@ -1047,12 +1049,13 @@ func convertToolConfig(model string, params *schemas.ChatParameters) *BedrockToo
 				description = *tool.Function.Description
 			}
 
+			schemaObjectBytes, _ := json.Marshal(schemaObject)
 			bedrockTool := BedrockTool{
 				ToolSpec: &BedrockToolSpec{
 					Name:        tool.Function.Name,
 					Description: schemas.Ptr(description),
 					InputSchema: BedrockToolInputSchema{
-						JSON: schemaObject,
+						JSON: json.RawMessage(schemaObjectBytes),
 					},
 				},
 			}
@@ -1156,13 +1159,14 @@ func checkMessageForToolContent(msg schemas.ChatMessage, toolsMap map[string]Bed
 						"type":       "object",
 						"properties": map[string]interface{}{},
 					}
+					extractedSchemaBytes, _ := json.Marshal(schemaObject)
 
 					toolsMap[*toolCall.Function.Name] = BedrockTool{
 						ToolSpec: &BedrockToolSpec{
 							Name:        *toolCall.Function.Name,
 							Description: schemas.Ptr("Tool extracted from conversation history"),
 							InputSchema: BedrockToolInputSchema{
-								JSON: schemaObject,
+								JSON: json.RawMessage(extractedSchemaBytes),
 							},
 						},
 					}
@@ -1203,10 +1207,10 @@ func convertToolCallToContentBlock(toolCall schemas.ChatAssistantMessageToolCall
 	// Preserve original key ordering of tool arguments for prompt caching.
 	// Using json.RawMessage avoids the map[string]interface{} round-trip
 	// that would destroy key order.
-	var input interface{}
+	var input json.RawMessage
 	var buf bytes.Buffer
 	if err := json.Compact(&buf, []byte(toolCall.Function.Arguments)); err == nil {
-		input = json.RawMessage(buf.Bytes())
+		input = buf.Bytes()
 	} else {
 		// Preserve original payload instead of silently dropping args.
 		input = json.RawMessage([]byte(toolCall.Function.Arguments))
@@ -1468,13 +1472,16 @@ func tryParseJSONIntoContentBlock(text string) BedrockContentBlock {
 		switch v := parsed.(type) {
 		case map[string]any:
 			// Objects are valid as-is
-			return BedrockContentBlock{JSON: v}
+			jsonBytes, _ := json.Marshal(v)
+			return BedrockContentBlock{JSON: json.RawMessage(jsonBytes)}
 		case []any:
 			// Arrays need to be wrapped
-			return BedrockContentBlock{JSON: map[string]any{"results": v}}
+			jsonBytes, _ := json.Marshal(map[string]any{"results": v})
+			return BedrockContentBlock{JSON: json.RawMessage(jsonBytes)}
 		default:
 			// Primitives (string, number, boolean, null) need to be wrapped
-			return BedrockContentBlock{JSON: map[string]any{"value": v}}
+			jsonBytes, _ := json.Marshal(map[string]any{"value": v})
+			return BedrockContentBlock{JSON: json.RawMessage(jsonBytes)}
 		}
 	}
 }

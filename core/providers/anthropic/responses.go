@@ -1428,7 +1428,7 @@ func ToAnthropicResponsesStreamResponse(ctx *schemas.BifrostContext, bifrostResp
 			}
 
 			// Always start with empty input for streaming compatibility
-			contentBlock.Input = map[string]interface{}{}
+			contentBlock.Input = json.RawMessage("{}")
 
 			streamResp.ContentBlock = contentBlock
 		} else if bifrostResp.Item != nil &&
@@ -1452,7 +1452,7 @@ func ToAnthropicResponsesStreamResponse(ctx *schemas.BifrostContext, bifrostResp
 			}
 
 			// Start with empty input for streaming compatibility
-			contentBlock.Input = map[string]interface{}{}
+			contentBlock.Input = json.RawMessage("{}")
 
 			streamResp.ContentBlock = contentBlock
 		} else {
@@ -1529,7 +1529,7 @@ func ToAnthropicResponsesStreamResponse(ctx *schemas.BifrostContext, bifrostResp
 									contentBlock.ID = bifrostResp.Item.ResponsesToolMessage.CallID
 									contentBlock.Name = bifrostResp.Item.ResponsesToolMessage.Name
 									// Always start with empty input for streaming compatibility
-									contentBlock.Input = map[string]interface{}{}
+									contentBlock.Input = json.RawMessage("{}")
 
 									// Track WebSearch tools so we can skip their argument deltas
 									if bifrostResp.Item.ResponsesToolMessage.Name != nil &&
@@ -1549,7 +1549,7 @@ func ToAnthropicResponsesStreamResponse(ctx *schemas.BifrostContext, bifrostResp
 								contentBlock.ServerName = &bifrostResp.Item.ResponsesToolMessage.ResponsesMCPToolCall.ServerLabel
 							}
 							// Always start with empty input for streaming compatibility
-							contentBlock.Input = map[string]interface{}{}
+							contentBlock.Input = json.RawMessage("{}")
 						}
 					}
 				}
@@ -3077,8 +3077,11 @@ func ConvertBifrostMessagesToAnthropicMessages(ctx *schemas.BifrostContext, bifr
 			}
 			if msg.ResponsesToolMessage != nil && msg.ResponsesToolMessage.Action != nil &&
 				msg.ResponsesToolMessage.Action.ResponsesWebFetchToolCallAction != nil {
-				serverToolUseBlock.Input = map[string]interface{}{
+				inputBytes, err := json.Marshal(map[string]interface{}{
 					"url": msg.ResponsesToolMessage.Action.ResponsesWebFetchToolCallAction.URL,
+				})
+				if err == nil {
+					serverToolUseBlock.Input = json.RawMessage(inputBytes)
 				}
 			}
 			pendingToolCalls = append(pendingToolCalls, serverToolUseBlock)
@@ -3462,7 +3465,8 @@ func convertAnthropicContentBlocksToResponsesMessagesGrouped(contentBlocks []Ant
 			if toolBlock.Name != nil && *toolBlock.Name == string(AnthropicToolNameComputer) {
 				bifrostMsg.Type = schemas.Ptr(schemas.ResponsesMessageTypeComputerCall)
 				bifrostMsg.ResponsesToolMessage.Name = nil
-				if inputMap, ok := toolBlock.Input.(map[string]interface{}); ok {
+				var inputMap map[string]interface{}
+				if err := json.Unmarshal(toolBlock.Input, &inputMap); err == nil {
 					bifrostMsg.ResponsesToolMessage.Action = &schemas.ResponsesToolMessageActionStruct{
 						ResponsesComputerToolCallAction: convertAnthropicToResponsesComputerAction(inputMap),
 					}
@@ -3470,7 +3474,8 @@ func convertAnthropicContentBlocksToResponsesMessagesGrouped(contentBlocks []Ant
 			} else if toolBlock.Name != nil && *toolBlock.Name == string(AnthropicToolNameWebSearch) {
 				bifrostMsg.Type = schemas.Ptr(schemas.ResponsesMessageTypeWebSearchCall)
 				bifrostMsg.ResponsesToolMessage.Name = nil
-				if inputMap, ok := toolBlock.Input.(map[string]interface{}); ok {
+				var inputMap map[string]interface{}
+				if err := json.Unmarshal(toolBlock.Input, &inputMap); err == nil {
 					if query, ok := inputMap["query"].(string); ok {
 						bifrostMsg.ResponsesToolMessage.Action = &schemas.ResponsesToolMessageActionStruct{
 							ResponsesWebSearchToolCallAction: &schemas.ResponsesWebSearchToolCallAction{
@@ -3484,7 +3489,8 @@ func convertAnthropicContentBlocksToResponsesMessagesGrouped(contentBlocks []Ant
 			} else if toolBlock.Name != nil && *toolBlock.Name == string(AnthropicToolNameWebFetch) {
 				bifrostMsg.Type = schemas.Ptr(schemas.ResponsesMessageTypeWebFetchCall)
 				bifrostMsg.ResponsesToolMessage.Name = nil
-				if inputMap, ok := toolBlock.Input.(map[string]interface{}); ok {
+				var inputMap map[string]interface{}
+				if err := json.Unmarshal(toolBlock.Input, &inputMap); err == nil {
 					if url, ok := inputMap["url"].(string); ok {
 						bifrostMsg.ResponsesToolMessage.Action = &schemas.ResponsesToolMessageActionStruct{
 							ResponsesWebFetchToolCallAction: &schemas.ResponsesWebFetchToolCallAction{
@@ -3494,7 +3500,7 @@ func convertAnthropicContentBlocksToResponsesMessagesGrouped(contentBlocks []Ant
 					}
 				}
 			} else {
-				bifrostMsg.ResponsesToolMessage.Arguments = schemas.Ptr(schemas.JsonifyInput(toolBlock.Input))
+				bifrostMsg.ResponsesToolMessage.Arguments = schemas.Ptr(string(toolBlock.Input))
 			}
 
 			bifrostMessages = append(bifrostMessages, bifrostMsg)
@@ -3651,7 +3657,7 @@ func convertAnthropicContentBlocksToResponsesMessages(ctx *schemas.BifrostContex
 				// This is a structured output tool - convert to text message
 				var jsonStr string
 				if block.Input != nil {
-					jsonStr = schemas.JsonifyInput(block.Input)
+					jsonStr = string(block.Input)
 				} else {
 					jsonStr = "{}"
 				}
@@ -3697,13 +3703,14 @@ func convertAnthropicContentBlocksToResponsesMessages(ctx *schemas.BifrostContex
 					if block.Name != nil && *block.Name == string(AnthropicToolNameComputer) {
 						bifrostMsg.Type = schemas.Ptr(schemas.ResponsesMessageTypeComputerCall)
 						bifrostMsg.ResponsesToolMessage.Name = nil
-						if inputMap, ok := block.Input.(map[string]interface{}); ok {
+						var inputMap map[string]interface{}
+						if err := json.Unmarshal(block.Input, &inputMap); err == nil {
 							bifrostMsg.ResponsesToolMessage.Action = &schemas.ResponsesToolMessageActionStruct{
 								ResponsesComputerToolCallAction: convertAnthropicToResponsesComputerAction(inputMap),
 							}
 						}
 					} else {
-						bifrostMsg.ResponsesToolMessage.Arguments = schemas.Ptr(schemas.JsonifyInput(block.Input))
+						bifrostMsg.ResponsesToolMessage.Arguments = schemas.Ptr(string(block.Input))
 					}
 					bifrostMessages = append(bifrostMessages, bifrostMsg)
 				}
@@ -3772,7 +3779,8 @@ func convertAnthropicContentBlocksToResponsesMessages(ctx *schemas.BifrostContex
 
 				// Extract query from input
 				if block.Input != nil {
-					if inputMap, ok := block.Input.(map[string]interface{}); ok {
+					var inputMap map[string]interface{}
+					if err := json.Unmarshal(block.Input, &inputMap); err == nil {
 						if query, ok := inputMap["query"].(string); ok {
 							bifrostMsg.ResponsesToolMessage.Action = &schemas.ResponsesToolMessageActionStruct{
 								ResponsesWebSearchToolCallAction: &schemas.ResponsesWebSearchToolCallAction{
@@ -3797,7 +3805,8 @@ func convertAnthropicContentBlocksToResponsesMessages(ctx *schemas.BifrostContex
 				}
 
 				if block.Input != nil {
-					if inputMap, ok := block.Input.(map[string]interface{}); ok {
+					var inputMap map[string]interface{}
+					if err := json.Unmarshal(block.Input, &inputMap); err == nil {
 						if url, ok := inputMap["url"].(string); ok {
 							bifrostMsg.ResponsesToolMessage.Action = &schemas.ResponsesToolMessageActionStruct{
 								ResponsesWebFetchToolCallAction: &schemas.ResponsesWebFetchToolCallAction{
@@ -3844,7 +3853,7 @@ func convertAnthropicContentBlocksToResponsesMessages(ctx *schemas.BifrostContex
 					ID:   block.ID,
 					ResponsesToolMessage: &schemas.ResponsesToolMessage{
 						Name:      block.Name,
-						Arguments: schemas.Ptr(schemas.JsonifyInput(block.Input)),
+						Arguments: schemas.Ptr(string(block.Input)),
 					},
 				}
 				if block.ServerName != nil {
@@ -4211,7 +4220,10 @@ func convertBifrostComputerCallToAnthropicToolUse(msg *schemas.ResponsesMessage)
 		}
 
 		if msg.ResponsesToolMessage.Action != nil && msg.ResponsesToolMessage.Action.ResponsesComputerToolCallAction != nil {
-			toolUseBlock.Input = convertResponsesToAnthropicComputerAction(msg.ResponsesToolMessage.Action.ResponsesComputerToolCallAction)
+			inputMap := convertResponsesToAnthropicComputerAction(msg.ResponsesToolMessage.Action.ResponsesComputerToolCallAction)
+			if inputBytes, err := json.Marshal(inputMap); err == nil {
+				toolUseBlock.Input = json.RawMessage(inputBytes)
+			}
 		}
 
 		return &toolUseBlock
@@ -4313,10 +4325,12 @@ func convertBifrostWebSearchCallToAnthropicBlocks(msg *schemas.ResponsesMessage)
 
 	// Extract the query from the action
 	if action.Query != nil {
-		input := map[string]interface{}{
+		inputBytes, err := json.Marshal(map[string]interface{}{
 			"query": *action.Query,
+		})
+		if err == nil {
+			serverToolUseBlock.Input = json.RawMessage(inputBytes)
 		}
-		serverToolUseBlock.Input = input
 	}
 
 	blocks = append(blocks, serverToolUseBlock)

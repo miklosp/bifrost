@@ -420,8 +420,8 @@ type CohereCitation struct {
 type CohereSource struct {
 	Type       CohereSourceType `json:"type"`                  // Source type ("tool" or "document")
 	ID         *string          `json:"id,omitempty"`          // Source ID (nullable)
-	ToolOutput *map[string]any  `json:"tool_output,omitempty"` // Tool output (for tool sources)
-	Document   *map[string]any  `json:"document,omitempty"`    // Document data (for document sources)
+	ToolOutput *json.RawMessage  `json:"tool_output,omitempty"` // Tool output (for tool sources, json.RawMessage preserves key ordering)
+	Document   *json.RawMessage  `json:"document,omitempty"`    // Document data (for document sources, json.RawMessage preserves key ordering)
 }
 
 // ==================== STREAMING TYPES ====================

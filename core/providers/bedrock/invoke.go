@@ -390,7 +390,8 @@ func (r *BedrockInvokeRequest) convertAnthropicTools() *BedrockToolConfig {
 			spec.Description = &desc
 		}
 		if inputSchema, ok := toolMap["input_schema"]; ok {
-			spec.InputSchema = BedrockToolInputSchema{JSON: inputSchema}
+			inputSchemaBytes, _ := json.Marshal(inputSchema)
+			spec.InputSchema = BedrockToolInputSchema{JSON: json.RawMessage(inputSchemaBytes)}
 		}
 
 		bedrockTools = append(bedrockTools, BedrockTool{ToolSpec: spec})

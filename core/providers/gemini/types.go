@@ -1373,7 +1373,7 @@ type FunctionResponse struct {
 	// Required. The function response in JSON object format. Use "output" key to specify
 	// function output and "error" key to specify error details (if any). If "output" and
 	// "error" keys are not specified, then whole "response" is treated as function output.
-	Response map[string]any `json:"response,omitempty"`
+	Response json.RawMessage `json:"response,omitempty"`
 }
 
 // ==================== RESPONSE TYPES ====================
@@ -2502,7 +2502,7 @@ type HTTPOptions struct {
 	// The structure must match the backend API's request structure.
 	//   - VertexAI backend API docs: https://cloud.google.com/vertex-ai/docs/reference/rest
 	//   - GeminiAPI backend API docs: https://ai.google.dev/api/rest
-	ExtraBody map[string]any `json:"extraBody,omitempty"`
+	ExtraBody json.RawMessage `json:"extraBody,omitempty"`
 	// Optional. A function that allows for request body customization.
 	// It is executed after ExtraBody has been merged, offering more advanced
 	// control over the request body than the static ExtraBody.
@@ -2611,12 +2611,12 @@ type GenerateVideosOperation struct {
 	// progress information and common metadata such as create time. Some services might
 	// not provide such metadata. Any method that returns a long-running operation should
 	// document the metadata type, if any.
-	Metadata map[string]any `json:"metadata,omitempty"`
+	Metadata json.RawMessage `json:"metadata,omitempty"`
 	// If the value is `false`, it means the operation is still in progress. If `true`,
 	// the operation is completed, and either `error` or `response` is available.
 	Done bool `json:"done,omitempty"`
 	// Optional. The error result of the operation in case of failure or cancellation.
-	Error map[string]any `json:"error,omitempty"`
+	Error json.RawMessage `json:"error,omitempty"`
 	// Optional. The long-running operation response payload.
 	Response *GenerateVideosOperationResponse `json:"response,omitempty"`
 }

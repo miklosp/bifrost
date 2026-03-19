@@ -1528,7 +1528,7 @@ func convertBifrostMessagesToGemini(messages []schemas.ChatMessage) ([]Content, 
 		// must be sent in a single message with only functionResponse parts (no text parts)
 		if isToolResponse {
 			// Parse the response content
-			var responseData map[string]any
+			var responseData json.RawMessage
 			var contentStr string
 
 			if message.Content != nil {
@@ -1551,16 +1551,19 @@ func convertBifrostMessagesToGemini(messages []schemas.ChatMessage) ([]Content, 
 
 			// Try to unmarshal as JSON
 			if contentStr != "" {
-				err := sonic.Unmarshal([]byte(contentStr), &responseData)
-				if err != nil {
+				// Validate it's valid JSON by attempting unmarshal
+				var tmp any
+				if err := sonic.Unmarshal([]byte(contentStr), &tmp); err == nil {
+					responseData = json.RawMessage(contentStr)
+				} else {
 					// If unmarshaling fails, wrap the original string to preserve it
-					responseData = map[string]any{
+					responseData, _ = sonic.Marshal(map[string]any{
 						"content": contentStr,
-					}
+					})
 				}
 			} else {
-				// If no content at all, use empty map to avoid nil
-				responseData = map[string]any{}
+				// If no content at all, use empty object to avoid nil
+				responseData = json.RawMessage(`{}`)
 			}
 
 			// Use ToolCallID if available, ensuring it's not nil
@@ -2323,18 +2326,17 @@ func extractFunctionResponseOutput(funcResp *FunctionResponse) string {
 	}
 
 	// Try to extract "output" field first
-	if outputVal, ok := funcResp.Response["output"]; ok {
-		if outputStr, ok := outputVal.(string); ok {
-			return outputStr
+	var respMap map[string]any
+	if err := sonic.Unmarshal([]byte(funcResp.Response), &respMap); err == nil {
+		if outputVal, ok := respMap["output"]; ok {
+			if outputStr, ok := outputVal.(string); ok {
+				return outputStr
+			}
 		}
 	}
 
-	// If no "output" key, marshal the entire response
-	if jsonResponse, err := sonic.Marshal(funcResp.Response); err == nil {
-		return string(jsonResponse)
-	}
-
-	return ""
+	// If no "output" key or unmarshal failed, return raw JSON
+	return string(funcResp.Response)
 }
 
 // decodeBase64StringToBytes decodes a base64-encoded string into raw bytes.

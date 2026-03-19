@@ -2,6 +2,7 @@ package gemini
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -232,15 +233,18 @@ func ToBifrostVideoGenerationResponse(operation *GenerateVideosOperation, model 
 	if !operation.Done {
 		response.Status = schemas.VideoStatusInProgress
 		if operation.Metadata != nil {
-			if progress, ok := operation.Metadata["progress"].(float64); ok {
-				response.Progress = &progress
+			var metadataMap map[string]any
+			if err := sonic.Unmarshal([]byte(operation.Metadata), &metadataMap); err == nil {
+				if progress, ok := metadataMap["progress"].(float64); ok {
+					response.Progress = &progress
+				}
 			}
 		}
 	} else if operation.Error != nil {
 		response.Status = schemas.VideoStatusFailed
 		response.Error = &schemas.VideoCreateError{
 			Code:    "video_generation_failed",
-			Message: fmt.Sprintf("%v", operation.Error),
+			Message: string(operation.Error),
 		}
 	} else if operation.Response != nil {
 		// Check new response format with content filtering support
@@ -358,14 +362,17 @@ func ToBifrostVideoGenerationResponse(operation *GenerateVideosOperation, model 
 
 	// Try to extract timestamps from metadata
 	if operation.Metadata != nil {
-		if createTime, ok := operation.Metadata["createTime"].(string); ok {
-			if t, err := time.Parse(time.RFC3339, createTime); err == nil {
-				response.CreatedAt = t.Unix()
+		var metadataMap map[string]any
+		if err := sonic.Unmarshal([]byte(operation.Metadata), &metadataMap); err == nil {
+			if createTime, ok := metadataMap["createTime"].(string); ok {
+				if t, err := time.Parse(time.RFC3339, createTime); err == nil {
+					response.CreatedAt = t.Unix()
+				}
 			}
-		}
-		if updateTime, ok := operation.Metadata["updateTime"].(string); ok {
-			if t, err := time.Parse(time.RFC3339, updateTime); err == nil && operation.Done {
-				response.CompletedAt = schemas.Ptr(t.Unix())
+			if updateTime, ok := metadataMap["updateTime"].(string); ok {
+				if t, err := time.Parse(time.RFC3339, updateTime); err == nil && operation.Done {
+					response.CompletedAt = schemas.Ptr(t.Unix())
+				}
 			}
 		}
 	}
@@ -571,10 +578,11 @@ func ToGeminiVideoGenerationResponse(response *schemas.BifrostVideoGenerationRes
 				},
 			}
 		} else if response.Error != nil {
-			operation.Error = map[string]any{
+			errBytes, _ := sonic.Marshal(map[string]any{
 				"message": response.Error.Message,
 				"code":    response.Error.Code,
-			}
+			})
+			operation.Error = json.RawMessage(errBytes)
 		}
 	default:
 		operation.Done = false
